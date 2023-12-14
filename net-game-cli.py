@@ -2,7 +2,7 @@ import pygame
 import socket
 from threading import Thread
 
-# pygame setup
+# Pygame setup
 pygame.init()
 screen = pygame.display.set_mode((1280, 720))
 clock = pygame.time.Clock()
@@ -16,24 +16,17 @@ def handle_server(connected_socket):
         try:
             received_data = connected_socket.recv(4096).decode('utf-8')
             if received_data:
-                
-                command, value = received_data.split()
-                value = int(value)
-
-                if command == "left":
-                    other_player_pos.x -= value
-                elif command == "right":
-                    other_player_pos.x += value
-                elif command == "up":
-                    other_player_pos.y -= value
-                elif command == "down":
-                    other_player_pos.y += value
+                x, y = map(int, received_data.split(':'))
+                other_player_pos.update(x, y)
         except ConnectionResetError:
             break
         except Exception as e:
             print(f"Error: {e}")
             break
 
+def send_position(socket, position):
+    message = f"{int(position.x)}:{int(position.y)}#"
+    socket.send(message.encode('utf-8'))
 
 socket_one = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -46,30 +39,35 @@ t1 = Thread(target=handle_server, args=[socket_one])
 t1.start()
 
 while running:
-    # poll for events
-    # pygame.QUIT event means the user clicked X to close your window
+    old_pos = circle_pos.xy
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # fill the screen with a color to wipe away anything from last frame
-    screen.fill("black")
-
-    # if left arrow key is pressed, move circle to the left
-    if pygame.key.get_pressed()[pygame.K_LEFT]:
+    moved = False
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
         circle_pos.x -= 5
-
-    # if right arrow key is pressed, move circle to the right
-    if pygame.key.get_pressed()[pygame.K_RIGHT]:
+        moved = True
+    if keys[pygame.K_RIGHT]:
         circle_pos.x += 5
+        moved = True
+    if keys[pygame.K_UP]:
+        circle_pos.y -= 5
+        moved = True
+    if keys[pygame.K_DOWN]:
+        circle_pos.y += 5
+        moved = True
 
-    pygame.draw.circle(screen, "green", circle_pos, 40)
+    if moved:
+        send_position(socket_one, circle_pos)
 
-    pygame.draw.circle(screen, "red", other_player_pos, 40)
+    screen.fill("black")
+    pygame.draw.circle(screen, "green", (int(circle_pos.x), int(circle_pos.y)), 40)
+    pygame.draw.circle(screen, "red", (int(other_player_pos.x), int(other_player_pos.y)), 40)
 
-    # flip() the display to put your work on screen
     pygame.display.flip()
-
-    clock.tick(60)  # limits FPS to 60
+    clock.tick(60)
 
 pygame.quit()
