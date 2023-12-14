@@ -12,13 +12,11 @@ running = True
 player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 other_player_pos = pygame.Vector2(screen.get_width() / 3, screen.get_height() / 3)
 
-# Network setup for the listening peer
+# Network setup for the connecting peer
 socket_one = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 port = 33123
-server_address = '0.0.0.0'  # Listen on all network interfaces
-socket_one.bind((server_address, port))
-socket_one.listen(1)
-conn, addr = socket_one.accept()
+server_address = '127.0.0.1'  # Use the IP address of the machine running the listener script
+socket_one.connect((server_address, port))
 
 # Function to handle incoming data
 def handle_server(sock):
@@ -38,7 +36,7 @@ def send_position(sock, position):
     sock.send(message.encode('utf-8'))
 
 # Start the thread for receiving data
-t1 = Thread(target=handle_server, args=[conn])
+t1 = Thread(target=handle_server, args=[socket_one])
 t1.start()
 
 # Game loop
@@ -66,7 +64,7 @@ while running:
 
     # Send position if moved
     if moved:
-        send_position(conn, player_pos)
+        send_position(socket_one, player_pos)
 
     # Drawing
     screen.fill("black")
