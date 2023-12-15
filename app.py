@@ -1,6 +1,12 @@
 import pygame
 import socket
+import logging
 from threading import Thread
+
+# Set up logging
+logging.basicConfig(filename='app-client.log',
+                    level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Pygame setup
 pygame.init()
@@ -16,7 +22,12 @@ other_player_pos = pygame.Vector2(screen.get_width() / 3, screen.get_height() / 
 socket_one = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 port = 33123
 server_address = '127.0.0.1'  # Use the IP address of the machine running the listener script
-socket_one.connect((server_address, port))
+try:
+    socket_one.connect((server_address, port))
+    logging.info(f"Connected to server at {server_address}:{port}")
+except Exception as e:
+    logging.error(f"Failed to connect to server: {e}")
+    running = False  # Stop the game if connection fails
 
 # Function to handle incoming data
 def handle_server(sock):
@@ -26,14 +37,16 @@ def handle_server(sock):
             if received_data:
                 x, y = map(int, received_data.split(':'))
                 other_player_pos.update(x, y)
+                logging.info(f"Data received: {received_data}")
         except Exception as e:
-            print(f"Error: {e}")
+            logging.error(f"Error in receiving data: {e}")
             break
 
 # Function to send player position
 def send_position(sock, position):
     message = f"{int(position.x)}:{int(position.y)}"
     sock.send(message.encode('utf-8'))
+    logging.info(f"Sent data: {message}")
 
 # Start the thread for receiving data
 t1 = Thread(target=handle_server, args=[socket_one])
@@ -45,6 +58,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            logging.info("Client shutdown initiated")
 
     # Movement
     moved = False
@@ -77,3 +91,4 @@ while running:
 # Cleanup
 pygame.quit()
 socket_one.close()
+logging.info("Client successfully closed")
