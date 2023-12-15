@@ -1,12 +1,6 @@
 import pygame
 import socket
-import logging
 from threading import Thread
-
-# Set up logging
-logging.basicConfig(filename='net-game-cli.log',
-                    level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Pygame setup
 pygame.init()
@@ -20,13 +14,16 @@ other_player_pos = pygame.Vector2(screen.get_width() / 3, screen.get_height() / 
 
 # Network setup for the listening peer
 socket_one = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# Allow the port to be reused
+socket_one.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 port = 33123
 server_address = '0.0.0.0'  # Listen on all network interfaces
 socket_one.bind((server_address, port))
 socket_one.listen(1)
-logging.info("Server listening on port {port}")
+
 conn, addr = socket_one.accept()
-logging.info(f"Connection established with {addr}")
 
 # Function to handle incoming data
 def handle_server(sock):
@@ -36,16 +33,14 @@ def handle_server(sock):
             if received_data:
                 x, y = map(int, received_data.split(':'))
                 other_player_pos.update(x, y)
-                logging.info(f"Data received: {received_data} from {addr}")
         except Exception as e:
-            logging.error(f"Error: {e}")
+            print(f"Error: {e}")
             break
 
 # Function to send player position
 def send_position(sock, position):
     message = f"{int(position.x)}:{int(position.y)}"
     sock.send(message.encode('utf-8'))
-    logging.info(f"Sent data: {message}")
 
 # Start the thread for receiving data
 t1 = Thread(target=handle_server, args=[conn])
@@ -57,7 +52,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-            logging.info("Game is quitting")
 
     # Movement
     moved = False
@@ -89,5 +83,5 @@ while running:
 
 # Cleanup
 pygame.quit()
+conn.close()
 socket_one.close()
-logging.info("Server and game closed")

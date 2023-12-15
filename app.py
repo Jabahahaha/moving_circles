@@ -1,12 +1,29 @@
 import pygame
 import socket
+import json
+import os
 import logging
 from threading import Thread
 
-# Set up logging
+# Logging setup
 logging.basicConfig(filename='app-client.log',
                     level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Function to save the player's position
+def save_position(position):
+    with open('player_position.json', 'w') as file:
+        json.dump({'x': position.x, 'y': position.y}, file)
+        logging.info("Player position saved")
+
+# Function to load the player's position
+def load_position():
+    if os.path.exists('player_position.json'):
+        with open('player_position.json', 'r') as file:
+            position_data = json.load(file)
+            logging.info("Player position loaded")
+            return pygame.Vector2(position_data['x'], position_data['y'])
+    return None
 
 # Pygame setup
 pygame.init()
@@ -14,8 +31,9 @@ screen = pygame.display.set_mode((800, 600))
 clock = pygame.time.Clock()
 running = True
 
-# Player and other player positions
-player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
+# Load position at start, or set default
+loaded_position = load_position()
+player_pos = loaded_position if loaded_position else pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 other_player_pos = pygame.Vector2(screen.get_width() / 3, screen.get_height() / 3)
 
 # Network setup for the connecting peer
@@ -89,6 +107,7 @@ while running:
     clock.tick(60)
 
 # Cleanup
+save_position(player_pos)  # Save position before quitting
 pygame.quit()
 socket_one.close()
 logging.info("Client successfully closed")
